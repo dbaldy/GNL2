@@ -6,7 +6,7 @@
 /*   By: dbaldy <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2015/12/07 13:41:50 by dbaldy            #+#    #+#             */
-/*   Updated: 2016/02/11 12:48:40 by dbaldy           ###   ########.fr       */
+/*   Updated: 2016/02/11 13:35:31 by dbaldy           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -95,6 +95,7 @@ static int			read_line(t_lc *obj, char *buf, char **line)
 	{
 		if ((size = read(obj->fno, buf, BUFF_SIZE)) == -1)
 			return (-1);
+		buf[BUFF_SIZE] = '\0';
 		if (size < BUFF_SIZE)
 			ft_strclr(&buf[size]);
 		temp = ft_strjoin(obj->str, buf);
@@ -105,8 +106,6 @@ static int			read_line(t_lc *obj, char *buf, char **line)
 	}
 	*line = ft_strdup(obj->str);
 	scan(obj->fno, 1);
-	if ((*line)[ft_strlen(*line) - 1] == '\n')
-		return (1);
 	return (0);
 }
 
@@ -120,7 +119,7 @@ int					get_next_line(int const fd, char **line)
 		return (-1);
 	if (ft_check(obj, line) == 1)
 		return (1);
-	if ((buf = (char*)malloc((sizeof(char) + 1) * BUFF_SIZE)) == NULL)
+	if ((buf = (char*)malloc((sizeof(char) + 1) * (BUFF_SIZE + 1))) == NULL)
 		return (-1);
 	ret = read_line(obj, buf, line);
 	free(buf);
