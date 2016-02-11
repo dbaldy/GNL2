@@ -6,20 +6,50 @@
 /*   By: dbaldy <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2015/12/07 13:41:50 by dbaldy            #+#    #+#             */
-/*   Updated: 2016/02/10 19:57:56 by dbaldy           ###   ########.fr       */
+/*   Updated: 2016/02/11 12:48:40 by dbaldy           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
 #include <stdio.h>
 
-t_lc				*scan(int fd)
+t_lc				*list_clear(t_lc **begin, int fd)
+{
+	t_lc	*buf;
+	t_lc	*temp;
+
+	buf = *begin;
+	temp = buf->next;
+	if (buf->fno == fd)
+	{
+		*begin = (*begin)->next;
+		free((buf)->str);
+		free(buf);
+	}
+	while (temp)
+	{
+		if (temp->fno == fd)
+		{
+			free(temp->str);
+			buf->next = temp->next;
+			temp->next = NULL;
+			free(temp);
+		}
+		buf = buf->next;
+		temp = temp->next;
+	}
+	return (NULL);
+}
+
+t_lc				*scan(int fd, int type)
 {
 	static t_lc		*lc_begin;
 	t_lc			*temp;
 	t_lc			*new;
 
 	temp = lc_begin;
+	if (type == 1)
+		return (list_clear(&lc_begin, fd));
 	while (temp)
 	{
 		if (temp->fno == fd)
@@ -35,48 +65,48 @@ t_lc				*scan(int fd)
 	return (new);
 }
 
-static int			ft_check(char *temp, char **str, char **res)
-{
-	int			size;
-
-	if (ft_strchr(temp, '\n') != NULL)
-	{
-		free(*str);
-		size = ft_strlen(temp) - ft_strlen(ft_strchr(temp, '\n'));
-		*str = ft_strdup(ft_strchr(temp, '\n') + 1);
-		*res = ft_strsub(temp, 0, size);
-		free(temp);
-		return (1);
-	}
-	return (0);
-}
-
-int			read_line(t_lc *obj, char *buf, char **line)
+static int			ft_check(t_lc *obj, char **res)
 {
 	int			size;
 	char		*temp;
 
-	temp = NULL;
+	temp = ft_strdup(obj->str);
+	if (ft_strchr(temp, '\n') != NULL)
+	{
+		size = ft_strlen(temp) - ft_strlen(ft_strchr(temp, '\n'));
+		*res = ft_strsub(temp, 0, size);
+		free(obj->str);
+		obj->str = ft_strdup(ft_strchr(temp, '\n') + 1);
+		free(temp);
+		return (1);
+	}
+	*res = obj->str;
+	free(temp);
+	return (0);
+}
+
+static int			read_line(t_lc *obj, char *buf, char **line)
+{
+	int			size;
+	char		*temp;
+
 	size = BUFF_SIZE;
 	while (size == BUFF_SIZE)
 	{
 		if ((size = read(obj->fno, buf, BUFF_SIZE)) == -1)
-		{
-			free(buf);
 			return (-1);
-		}
 		if (size < BUFF_SIZE)
 			ft_strclr(&buf[size]);
-		if (temp != NULL)
-			free(temp);
 		temp = ft_strjoin(obj->str, buf);
-		if (ft_check(temp, &obj->str, line) == 1)
-		{
-			free(buf);
+		free(obj->str);
+		obj->str = temp;
+		if (ft_check(obj, line) == 1)
 			return (1);
-		}
 	}
-	free(buf);
+	*line = ft_strdup(obj->str);
+	scan(obj->fno, 1);
+	if ((*line)[ft_strlen(*line) - 1] == '\n')
+		return (1);
 	return (0);
 }
 
@@ -84,12 +114,15 @@ int					get_next_line(int const fd, char **line)
 {
 	t_lc		*obj;
 	char		*buf;
+	int			ret;
 
-	if ((line == NULL) || (obj = scan(fd)) == NULL)
+	if ((line == NULL) || (obj = scan(fd, 0)) == NULL)
 		return (-1);
-	if (ft_check(ft_strdup(obj->str), &obj->str, line) == 1)
+	if (ft_check(obj, line) == 1)
 		return (1);
 	if ((buf = (char*)malloc((sizeof(char) + 1) * BUFF_SIZE)) == NULL)
 		return (-1);
-	return (read_line(obj, buf, line));
+	ret = read_line(obj, buf, line);
+	free(buf);
+	return (ret);
 }
