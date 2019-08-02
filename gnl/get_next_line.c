@@ -48,7 +48,7 @@ t_lc				*scan(int fd, int type)
 	t_lc			*new;
 
 	temp = lc_begin;
-	if (type == 1)
+	if (type == DESTROY_LC)
 		return (list_clear(&lc_begin, fd));
 	while (temp)
 	{
@@ -61,52 +61,48 @@ t_lc				*scan(int fd, int type)
 	new->next = lc_begin;
 	lc_begin = new;
 	new->fno = fd;
-	new->str = ft_strdup("");
+	new->str = ft_strdup(EMPTY_STRING);
 	return (new);
 }
 
 static int			ft_check(t_lc *obj, char **res)
 {
-	int			size;
+	int		size;
 	char		*temp;
 
-	temp = ft_strdup(obj->str);
-	if (ft_strchr(temp, '\n') != NULL)
+	if (ft_strchr(obj->str, '\n') != NULL)
 	{
-		size = ft_strlen(temp) - ft_strlen(ft_strchr(temp, '\n'));
-		*res = ft_strsub(temp, 0, size);
+		size = ft_strchr(obj->str, '\n') - obj->str;
+		*res = ft_strsub(obj->str, 0, size);
+		temp = ft_strdup(ft_strchr(obj->str, '\n') + 1);
 		free(obj->str);
-		obj->str = ft_strdup(ft_strchr(temp, '\n') + 1);
-		free(temp);
-		return (1);
+		obj->str = temp;
+		return (LINE_READ);
 	}
 	*res = obj->str;
-	free(temp);
-	return (0);
+	return (NO_NL);
 }
 
 static int			read_line(t_lc *obj, char *buf, char **line)
 {
-	int			size;
+	int		size;
 	char		*temp;
 
-	size = BUFF_SIZE;
-	while (size == BUFF_SIZE)
+	while ((size = read(obj->fno, buf, BUFF_SIZE)) > 0)
 	{
-		if ((size = read(obj->fno, buf, BUFF_SIZE)) == -1)
-			return (-1);
-		buf[BUFF_SIZE] = '\0';
-		if (size < BUFF_SIZE)
-			ft_strclr(&buf[size]);
+		buf[size] = '\0';	
 		temp = ft_strjoin(obj->str, buf);
 		free(obj->str);
 		obj->str = temp;
-		if (ft_check(obj, line) == 1)
-			return (1);
+		if (ft_check(obj, line) == LINE_READ)
+			break ;
 	}
-	*line = ft_strdup(obj->str);
-	scan(obj->fno, 1);
-	return (0);
+	if (size == 0)
+	{
+		scan(obj->fno, DESTROY_LC);
+		return (END_O_F);
+	}
+	return (LINE_READ);
 }
 
 int					get_next_line(int const fd, char **line)
@@ -115,12 +111,12 @@ int					get_next_line(int const fd, char **line)
 	char		*buf;
 	int			ret;
 
-	if ((line == NULL) || (obj = scan(fd, 0)) == NULL)
-		return (-1);
-	if (ft_check(obj, line) == 1)
-		return (1);
+	if ((line == NULL) || (obj = scan(fd, GET_LC)) == NULL)
+		return (ERROR_CODE);
+	if (ft_check(obj, line) == LINE_READ)
+		return (LINE_READ);
 	if ((buf = (char*)malloc((sizeof(char) + 1) * (BUFF_SIZE + 1))) == NULL)
-		return (-1);
+		return (ERROR_CODE);
 	ret = read_line(obj, buf, line);
 	free(buf);
 	return (ret);
